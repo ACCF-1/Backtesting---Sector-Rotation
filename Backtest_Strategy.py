@@ -14,13 +14,14 @@ import matplotlib as mlib
 developer notes
 3, qly_rtn_df Q2 Q4 NAV the same, possible problem
 8, 2018 Q4 rows gone
+9, day need to minus 1?
 '''
 
 
 class WgtRtnMatrix():
-    def __init__(self):
+    def __init__(self, signal_df):
         self.mktcap_cls = cfg.param_cls_dict.get('mkt_cap')
-        self.signal_df = cfg.updated_csv_data.get('signal').copy()
+        self.signal_df = signal_df.copy()
         self.mktcap_df = cfg.updated_csv_data.get('mkt_cap').copy()
         self.stkpx_df = cfg.updated_csv_data.get('px').copy()
         self.chgTestPeriod()
@@ -31,16 +32,16 @@ class WgtRtnMatrix():
         self.final_matrix = self.getFinalMatrix()
 
     def chgTestPeriod(self):
-        beg_year = cfg.checkBegYr()
+        test_beg_year = cfg.checkBegYr()
         self.signal_df = self.signal_df.loc[self.signal_df.index >=
-                                            pd.to_datetime(beg_year).to_period("Q")
+                                            pd.to_datetime(test_beg_year).to_period("Q")
                                             - cfg.qtr_to_semi_ratio]
 
         self.mktcap_df = self.mktcap_df.loc[self.mktcap_df.index >=
-                                            pd.to_datetime(beg_year).to_period("Q")
+                                            pd.to_datetime(test_beg_year).to_period("Q")
                                             - cfg.qtr_to_semi_ratio]
 
-        self.stkpx_df = self.stkpx_df.loc[self.stkpx_df.index >= beg_year]
+        self.stkpx_df = self.stkpx_df.loc[self.stkpx_df.index >= test_beg_year]
 
     def getRtnDF(self):
         shft_signal_df = self.shiftDfDate(self.signal_df)
@@ -107,6 +108,14 @@ class Stats():
         self.daily_rtn_series = self.perf_df['Daily Return'].copy()
         self.avg_rtn = self.daily_rtn_series.mean()
         self.std_rtn = self.daily_rtn_series.std()
+        self.sharpe = self.calSharpe()
+        self.cum_rtn = 100*(self.perf_df['Cumulative Return'][-1]-1)
+        self.consec_loss = self.calMaxConsecLoss(self.perf_df['Daily Return'] < 0)
+        self.win_rate = self.calWinRate(self.daily_rtn_series)
+        self.strategy_mdd = self.calMdd(self.perf_df['Portfolio NAV'].to_numpy(copy=True))\
+                                        if 'Portfolio NAV' in self.perf_df.columns else None
+        self.annual_rtn = self.avg_rtn*cfg.trade_days
+        self.annual_vol = self.std_rtn*(cfg.trade_days**(1/2))
 
     def drawBarGraphs(self, grph_name):
         def calQlyRtn():
@@ -130,7 +139,6 @@ class Stats():
         ax.set_facecolor('black')
         fig.autofmt_xdate()
         fig.savefig(cfg.directory['ssr']+cfg.mkt_idx_name+" "+grph_name+".png")
-        plt.show()
 
     def drawLineGraphs(self, grph_name):
         beg_mktidx_val = self.bm_idx_val_df.iat[0, 0]
@@ -149,7 +157,6 @@ class Stats():
         ax.set_facecolor('black')
         fig.autofmt_xdate()
         fig.savefig(cfg.directory['ssr'] + cfg.mkt_idx_name + " " + grph_name + ".png")
-        plt.show()
 
     def printStats(self, strategy):
         mdd_subj = None
@@ -160,16 +167,20 @@ class Stats():
             print(cfg.mkt_idx_name, "Index: ")
             mdd_subj = self.bm_idx_val_df['Index Value']
 
-        print("Annual Sharpe Ratio: ", round(self.avg_rtn/self.std_rtn*(cfg.trade_days**(1/2)), 4))
-        print("Cumulative =", round((self.perf_df['Cumulative Return'][-1]-1)*100, 4), "%")
-        print("Max Consecutive Loss =", self.calMaxConsecLoss(self.perf_df['Daily Return'] < 0), "days")
+        print("Annual Sharpe Ratio: ", round(self.sharpe, 4))
+        print("Cumulative =", round(self.cum_rtn, 4), "%")
+        print("Max Consecutive Loss =", self.consec_loss, "days")
         print("Max Drawdown:", round(self.calMdd(mdd_subj.to_numpy(copy=True)), 4), "%")
-        print("Win Rate:", round(self.calWinRate(self.daily_rtn_series), 4), "%")
+        print("Win Rate:", round(self.win_rate, 4), "%")
         print("Average Daily Return =", round(self.avg_rtn, 4), "%")
         print("SD of Daily Return =", round(self.std_rtn, 4), "%")
-        print("Annualized Return =", round(self.avg_rtn*cfg.trade_days, 4), "%")
-        print("Annualized Volatility =", round(self.std_rtn*(cfg.trade_days**(1/2)), 4), "%")
+        print("Annualized Return =", round(self.annual_rtn, 4), "%")
+        print("Annualized Volatility =", round(self.annual_vol, 4), "%")
         print("\n")
+
+    def calSharpe(self):
+        sharpe = self.avg_rtn/self.std_rtn*(cfg.trade_days**(1/2))
+        return sharpe
 
     @staticmethod
     def calMaxConsecLoss(neg_rtn):
@@ -209,10 +220,140 @@ class Stats():
         return mdd
 
 
+def oneTimeTest():
+    matrix_cls = WgtRtnMatrix(cfg.updated_csv_data.get('signal'))
+    matrix_cls.writeCSV()
+
+    mktidx_cls = cfg.mktidx_cls_dict.get(cfg.mkt_idx_name)
+    bm_idx_df, bm_kpi_df = mktidx_cls.calKPI()
+
+    # match testing period time
+    bm_idx_df = bm_idx_df.loc[bm_idx_df.index <= matrix_cls.kpi_df.index.max()]
+    bm_kpi_df = bm_kpi_df.loc[bm_kpi_df.index <= matrix_cls.kpi_df.index.max()]
+
+    bt_stats_cls = Stats(matrix_cls.kpi_df, bm_idx_df)
+    bt_stats_cls.drawLineGraphs(cfg.line_grph_title)
+    bt_stats_cls.drawBarGraphs(cfg.bar_grph_title)
+    bt_stats_cls.printStats(cfg.strategy_name)
+
+    bm_stats_cls = Stats(bm_kpi_df, bm_idx_df)
+    bm_stats_cls.printStats(cfg.mkt_idx_name)
+
+
+def optimSecCnt():
+    sharpe_list = []
+    mdd_list = []
+    ann_rtn_list = []
+    ann_vol_list = []
+    sec_cnt_list = []
+    mktidx_cls = cfg.mktidx_cls_dict.get(cfg.mkt_idx_name)
+    bm_idx_df, bm_kpi_df = mktidx_cls.calKPI()
+
+    for mark in range(cfg.sim_sec_cnt_min, cfg.sim_sec_cnt_max + 1):
+        cfg.sec_eval_cls_dict['signal'+str(mark)] = sec_select.SignalDF(cfg.updated_csv_data.get('earn_g'),
+                                                                        cfg.updated_csv_data.get('mkt_cap'),
+                                                                        mark)
+        matrix_cls = WgtRtnMatrix(cfg.sec_eval_cls_dict['signal'+str(mark)].final_df)
+
+        bm_idx_df = bm_idx_df.loc[bm_idx_df.index <= matrix_cls.kpi_df.index.max()]
+        bt_stats_cls = Stats(matrix_cls.kpi_df, bm_idx_df)
+        bt_stats_cls.drawLineGraphs(cfg.line_grph_title + ", " + str(mark) + " Sector(s) Chosen")
+        bt_stats_cls.drawBarGraphs(cfg.bar_grph_title + ", " + str(mark) + " Sector(s) Chosen")
+        bt_stats_cls.printStats(cfg.strategy_name)
+        
+        sec_cnt_list.append(mark)
+        sharpe_list.append(bt_stats_cls.sharpe)
+        ann_rtn_list.append(bt_stats_cls.annual_rtn)
+        mdd_list.append(bt_stats_cls.strategy_mdd)
+        ann_vol_list.append(bt_stats_cls.annual_vol)
+    drawScatGraphs(sec_cnt_list, sharpe_list, ann_rtn_list, mdd_list,ann_vol_list)
+
+
+def drawScatGraphs(sec_cnt_list, sharpe_list, ann_rtn_list, mdd_list, ann_vol_list):
+    fig = plt.figure(figsize=(8,7), constrained_layout=True)
+    fig.suptitle(cfg.scat_grph_title, fontsize=18)
+    ax1 = fig.add_subplot(2,2,1)
+    ax1.yaxis.tick_right()
+    ax1.tick_params(labelright=False)
+    ax1.axes.scatter(ann_rtn_list, sharpe_list, c='darkblue')
+    ax1.axes.invert_xaxis()
+    ax1.set_xlabel('Annualized Return, %')
+    ax1.yaxis.set_label_position('right')
+
+    ax2 = fig.add_subplot(2,2,2)
+    ax2.tick_params(axis='x', pad=10)
+    ax2.axes.scatter(mdd_list, sharpe_list, c='darkblue')
+    ax2.set_xlabel('Max Drawdown, %')
+    ax2.set_ylabel('Annual Sharpe Ratio')
+    ax2.axes.invert_xaxis()
+
+    ax3 = fig.add_subplot(2,2,3)
+    ax3.xaxis.tick_top()
+    ax3.yaxis.tick_right()
+    ax3.tick_params(labelright=False)
+    ax3.tick_params(labeltop=False)
+    ax3.axes.scatter(ann_rtn_list, ann_vol_list, c='darkblue')
+    ax3.axes.invert_yaxis()
+    ax3.axes.invert_xaxis()
+
+    ax4 = fig.add_subplot(2,2,4)
+    ax4.xaxis.tick_top()
+    ax4.tick_params(labeltop=False)
+    ax4.axes.scatter(mdd_list, ann_vol_list, c='darkblue')
+    ax4.axes.invert_yaxis()
+    ax4.axes.invert_xaxis()
+    ax4.set_ylabel('Annualized Volatility, %')
+
+    four_scat = [ax1, ax2, ax3, ax4]
+    fig.set_facecolor('darkgrey')
+
+    for ax in four_scat:
+        ax.set_facecolor('lightgrey')
+    
+    for i, txt in enumerate(sec_cnt_list):
+        ax1.annotate(txt, (ann_rtn_list[i], sharpe_list[i]))
+        ax2.annotate(txt, (mdd_list[i], sharpe_list[i]))
+        ax3.annotate(txt, (ann_rtn_list[i], ann_vol_list[i]))
+        ax4.annotate(txt, (mdd_list[i], ann_vol_list[i]))
+    
+    fig.savefig(cfg.directory['ssr'] + cfg.scat_grph_title + ".png")
+
+        
+'''     
+def fullSimulate():
+    #2, every signal, different time period
+    mktidx_cls = cfg.mktidx_cls_dict.get(cfg.mkt_idx_name)
+    bm_idx_df, bm_kpi_df = mktidx_cls.calKPI()
+
+    # match testing period time
+
+    for mark in range(cfg.sim_sec_cnt_min, cfg.sim_sec_cnt_max):
+        cfg.sec_eval_cls_dict['signal'+str(mark)] = sec_select.SignalDF(cfg.updated_csv_data.get('earn_g'),
+                                                                        cfg.updated_csv_data.get('mkt_cap'),
+                                                                        mark)
+        matrix_cls = WgtRtnMatrix(cfg.sec_eval_cls_dict['signal'+str(mark)].final_df)
+
+        bm_idx_df = bm_idx_df.loc[bm_idx_df.index <= matrix_cls.kpi_df.index.max()]
+        bm_kpi_df = bm_kpi_df.loc[bm_kpi_df.index <= matrix_cls.kpi_df.index.max()]
+        bt_stats_cls = Stats(matrix_cls.kpi_df, bm_idx_df)
+        bt_stats_cls.drawScatGraphs(cfg.scat_grph_title)
+
+        bt_stats_cls.printStats(cfg.strategy_name)'''
+
+
+
+
+
+
+
+
+
+'''----------------------------------------------------------------------------------'''
+
 if __name__ == '__main__':
     start_time = time.time()
     print("\n")
-    print(cfg.mkt_idx_name, "BACK TEST", "start from", cfg.beg_yr)
+    print(cfg.mkt_idx_name, "BACK TEST", "start from", cfg.test_beg_yr)
 
     cfg.setupFolder('ssr')
 
@@ -223,23 +364,8 @@ if __name__ == '__main__':
                        cfg.updated_csv_data.get('earn_g'),
                        cfg.updated_csv_data.get('mkt_cap'))
 
-    matrix_cls = WgtRtnMatrix()
-    matrix_cls.writeCSV()
-
-    mktidx_cls = cfg.mktidx_cls_dict.get(cfg.mkt_idx_name)
-    bm_idx_df, bm_kpi_df = mktidx_cls.calKPI()
-
-    # match testing period time
-    bm_idx_df = bm_idx_df.loc[bm_idx_df.index <= matrix_cls.kpi_df.index.max()]
-    bm_kpi_df = bm_kpi_df.loc[bm_kpi_df.index <= matrix_cls.kpi_df.index.max()]
-    
-    bt_stats_cls = Stats(matrix_cls.kpi_df, bm_idx_df)
-    bt_stats_cls.drawLineGraphs(cfg.line_grph_title)
-    bt_stats_cls.drawBarGraphs(cfg.bar_grph_title)
-    bt_stats_cls.printStats(cfg.strategy_name)
-
-    bm_stats_cls = Stats(bm_kpi_df, bm_idx_df)
-    bm_stats_cls.printStats(cfg.mkt_idx_name)
+    #oneTimeTest()
+    optimSecCnt()
 
     print("Backtesting Completed...")
     print("\n")
