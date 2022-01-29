@@ -17,11 +17,13 @@ def routing(csv_name, earn_g_df, mktcap_df):
     if csv_name == 'ranking':
         cfg.sec_eval_cls_dict[csv_name] = MarksDF(earn_g_df, mktcap_df)
     elif csv_name == 'signal':
-        cfg.sec_eval_cls_dict[csv_name] = SignalDF(earn_g_df, mktcap_df)
-    cfg.updated_csv_data[csv_name] = cfg.sec_eval_cls_dict[csv_name].updateCSV()
+        cfg.sec_eval_cls_dict[csv_name] = SignalDF(earn_g_df, mktcap_df, mark=cfg.num_of_sec_chosen-1)
+    cfg.updated_csv_data[csv_name] = cfg.sec_eval_cls_dict[csv_name].final_df
+    cfg.sec_eval_cls_dict[csv_name].updateCSV()
 
 
 class MarksDF(object):
+    file_name = 'Ranking based on Weighted Earnings Growth.csv'
     def __init__(self, earn_g_df, mktcap_df):
         self.mktcap_df = mktcap_df.copy()
         self.earn_g_df = earn_g_df.copy()
@@ -29,6 +31,7 @@ class MarksDF(object):
         self.sec_dict_list = {}
         self.rank_date_list = self.getRankDateList()
         self.sum_list = self.getSumList()
+        self.final_df = self.getFinalDF()
 
     def getRankDateList(self):
         date_beg_idx = None
@@ -37,7 +40,7 @@ class MarksDF(object):
                         else self.mktcap_df.index.copy()
 
         for date in rank_date_list:
-            if date >= cfg.beg_test_date and date.quarter%2 == 0:
+            if date >= cfg.signal_beg_date and date.quarter%2 == 0:
                 #one-off if
                 if date_beg_idx is None:
                     date_beg_idx = rank_date_list.get_loc(date)
@@ -57,22 +60,26 @@ class MarksDF(object):
             j += 1
         return sum_list
 
-    def updateCSV(self):
+    def getFinalDF(self):
         marks_df = pd.DataFrame(self.sum_list, index=self.rank_date_list,
                                 columns=cfg.sec_league_tbl.values())
-        marks_df.to_csv(cfg.directory['ssr'] + 'Ranking based on Weighted Earnings Growth.csv')
+        return marks_df
+
+    def updateCSV(self):
+        self.final_df.to_csv(cfg.directory['ssr'] + self.file_name)
 
 
 class SignalDF(MarksDF):
-    mark_criteria = cfg.num_of_sec_chosen - 1  # -1 to consider "0" idx
-    def __init__(self, earn_g_df, mktcap_df):
+    file_name = 'Signal [1 and 0].csv'
+    def __init__(self, earn_g_df, mktcap_df, mark):
+        self.mark_criteria = mark
         MarksDF.__init__(self, earn_g_df, mktcap_df)
+        self.final_df = self.getFinalDF()
 
-    def updateCSV(self):
+    def getFinalDF(self):
         marks_df = pd.DataFrame(self.sum_list, index=self.rank_date_list,
                                 columns=cfg.sec_league_tbl.values())
         signal_df = marks_df.applymap(lambda x: 0 if x > self.mark_criteria else 1)
-        signal_df.to_csv(cfg.directory['ssr'] + 'Signal [1 and 0].csv')
         return signal_df
 
 

@@ -5,7 +5,7 @@ import os
 '''
 developer notes
 1, getDateComponent & refmtDateList, change to pd.to_datetime format = '%d/%m/%Y'
-
+2, optim_max_param
 '''
 
 
@@ -14,14 +14,28 @@ developer notes
 market = 'HK'
 mkt_idx_name = 'HSCI'
 strategy_name = 'Sector Rotate'
-beg_yr = 2008
+
+test_beg_yr = 2009
+train_set_period = 4
+test_set_period = 2
+optim_param = 'sharpe'
+roll_increm_yr = 1
+roll_freq = 4
+sim_sec_cnt_min = 3  # for diversification purpose, no < 3
+sim_sec_cnt_max = 8
+#optim_max_param = 'sharpe'  # either max/min param = None
+#optim_min_param = None
+
+num_of_sec_chosen = 4
+
 initial_NAV = 1000000
 qtr_to_semi_ratio = 2
-num_of_sec_chosen = 4
-beg_test_date = pd.to_datetime('1998Q4').to_period("Q")
+
+signal_beg_date = pd.to_datetime('1998Q4').to_period("Q")
 trade_days = 252
 line_grph_title = "Sector Selection NAV Growth"
 bar_grph_title = 'Semiannual Return'
+scat_grph_title = 'Performance of various No. of sector(s) picked'
 
 pre_csv = {"earn_g": "earnings_growth_bloomberg.csv",
            mkt_idx_name: mkt_idx_name + '_bloomberg.csv',
@@ -88,13 +102,17 @@ def rfmtToSemiannual(datelist):  # FIXME better way to do same thing? e.g. apply
     return semi_date
 
 
-def checkBegYr():
-    if beg_yr <= 2000 or beg_yr >= 2018:
+def getTestBegEndYr(test_roll_freq):  # FIXME no need default year???
+    if test_beg_yr <= 2000 or test_beg_yr >= 2018:
         print("Use Default Year: 2000")
-        return pd.to_datetime('2000')
+        return pd.to_datetime(str(2000 + test_roll_freq*roll_increm_yr)),\
+            pd.to_datetime(str(2000 + train_set_period + test_roll_freq*roll_increm_yr)),\
+            pd.to_datetime(str(2000 + train_set_period + test_roll_freq*roll_increm_yr + test_set_period))  #FIXME
     else:
-        return pd.to_datetime(str(beg_yr))
-
+        return pd.to_datetime(str(test_beg_yr + test_roll_freq*roll_increm_yr)),\
+            pd.to_datetime(str(test_beg_yr + train_set_period + test_roll_freq*roll_increm_yr)),\
+            pd.to_datetime(str(test_beg_yr + train_set_period + test_roll_freq*roll_increm_yr + test_set_period))  #FIXME
+            #beg, end+beg, end
 
 def setupFolder(folder_abbr):
     if not os.path.exists(directory[folder_abbr]):

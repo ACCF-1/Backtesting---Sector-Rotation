@@ -63,8 +63,14 @@ class MktIdx(object):
         final_df.index = cfg.refmtDateList(final_df.index)
         return final_df
 
-    def calKPI(self):
-        bm_idx_df = self.final_df.loc[self.final_df.index >= cfg.checkBegYr()]  # FIXME
+    def calKPI(self, test_type='in_sam', freq=0):
+        test_roll_freq = freq
+        if test_type == 'in_sam':
+            test_beg_year, test_end_year, _ = cfg.getTestBegEndYr(test_roll_freq)  #FIXME
+        elif test_type == 'out_sam':
+            _ , test_beg_year, test_end_year = cfg.getTestBegEndYr(test_roll_freq)  #FIXME
+        bm_idx_df = self.final_df.loc[self.final_df.index >= test_beg_year]
+        bm_idx_df = bm_idx_df.loc[bm_idx_df.index < test_end_year]  # FIXME, may del
         bm_kpi_df = bm_idx_df.pct_change().mul(100).copy()
         bm_kpi_df.columns = ['Daily Return']
         bm_kpi_df['Cumulative Return'] = bm_kpi_df['Daily Return'].div(100).add(1).cumprod()

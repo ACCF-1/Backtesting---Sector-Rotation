@@ -341,7 +341,6 @@ def drawQuadScatGraphs(sec_cnt_list, sharpe_list, ann_rtn_list, mdd_list, ann_vo
     
     fig.savefig(cfg.directory['ssr'] + cfg.scat_grph_title + ".png")
     plt.show()
-        
 
 
 def fullSimulate():
@@ -376,8 +375,7 @@ def fullSimulate():
 
             best_mark = test_mark[sharpe_list.index(max(sharpe_list))]
         bt_stats_cls.drawLineGraphs('In Sample: ' + cfg.line_grph_title + ", " + str(best_mark) + " Sector(s) Chosen")
-        bt_stats_cls.drawBarGraphs('In Sample: ' + cfg.bar_grph_title + ", " + str(best_mark) + " Sector(s) Chosen")
-        print('Picking ' + str(best_mark) + ' sectors is the best in terms of annualized sharpe, with ' + str(max(sharpe_list)))
+        print('Picking ' + str(best_mark) + ' sectors is the best in terms of annualized sharpe, with ' + str(round(max(sharpe_list),4)))
 
         drawQuadScatGraphs(sec_cnt_list, sharpe_list, ann_rtn_list, mdd_list,ann_vol_list)
         if cfg.optim_param == 'sharpe':
@@ -393,7 +391,6 @@ def fullSimulate():
             
                 bt_stats_cls = Stats(matrix_cls.kpi_df, bm_idx_df)
                 bt_stats_cls.drawLineGraphs('Out of Sample: ' + cfg.line_grph_title + ", " + str(best_mark) + " Sector(s) Chosen")
-                bt_stats_cls.drawBarGraphs('Out of Sample: ' + cfg.bar_grph_title + ", " + str(best_mark) + " Sector(s) Chosen")
                 bt_stats_cls.printStats(cfg.strategy_name)
                 
                 bm_stats_cls = Stats(bm_kpi_df, bm_idx_df)
