@@ -15,25 +15,27 @@ market = 'HK'
 mkt_idx_name = 'HSCI'
 strategy_name = 'Sector Rotate'
 
+test_method = 'rolling'  # "rolling" or "single period"
 test_beg_yr = 2009
-train_set_period = 4
-test_set_period = 2
+train_set_period = 2
+test_set_period = 1
 optim_param = 'sharpe'
-roll_increm_yr = 1
-roll_freq = 4
-sim_sec_cnt_min = 3  # for diversification purpose, no < 3
+sim_sec_cnt_min = 3
 sim_sec_cnt_max = 8
+roll_increm_yr = 1
+roll_freq = 5
+
+num_of_sec_chosen = 4                                    # for single period or signal update only
+
 #optim_max_param = 'sharpe'  # either max/min param = None
 #optim_min_param = None
-
-num_of_sec_chosen = 4
 
 initial_NAV = 1000000
 qtr_to_semi_ratio = 2
 
 signal_beg_date = pd.to_datetime('1998Q4').to_period("Q")
 trade_days = 252
-line_grph_title = "Sector Selection NAV Growth"
+line_grph_title = "Sector Rotation NAV Growth"
 bar_grph_title = 'Semiannual Return'
 scat_grph_title = 'Performance of various No. of sector(s) picked'
 
@@ -94,7 +96,7 @@ def rfmtToSemiannual(datelist):  # FIXME better way to do same thing? e.g. apply
     semi_date = []
     quarter_dates = pd.to_datetime(datelist).to_period("Q")
     for idx, _ in enumerate(quarter_dates):
-        if quarter_dates[idx].quarter <= qtr_to_semi_ratio:  # FIXME
+        if quarter_dates[idx].quarter <= qtr_to_semi_ratio:
             semi_date.append(str(quarter_dates[idx].year)+'Q2')
         else:
             semi_date.append(str(quarter_dates[idx].year)+'Q4')
@@ -107,11 +109,11 @@ def getTestBegEndYr(test_roll_freq):  # FIXME no need default year???
         print("Use Default Year: 2000")
         return pd.to_datetime(str(2000 + test_roll_freq*roll_increm_yr)),\
             pd.to_datetime(str(2000 + train_set_period + test_roll_freq*roll_increm_yr)),\
-            pd.to_datetime(str(2000 + train_set_period + test_roll_freq*roll_increm_yr + test_set_period))  #FIXME
+            pd.to_datetime(str(2000 + train_set_period + test_roll_freq*roll_increm_yr + test_set_period))
     else:
         return pd.to_datetime(str(test_beg_yr + test_roll_freq*roll_increm_yr)),\
             pd.to_datetime(str(test_beg_yr + train_set_period + test_roll_freq*roll_increm_yr)),\
-            pd.to_datetime(str(test_beg_yr + train_set_period + test_roll_freq*roll_increm_yr + test_set_period))  #FIXME
+            pd.to_datetime(str(test_beg_yr + train_set_period + test_roll_freq*roll_increm_yr + test_set_period))
             #beg, end+beg, end
 
 def setupFolder(folder_abbr):

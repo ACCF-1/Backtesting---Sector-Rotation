@@ -21,7 +21,7 @@ developer notes
 
 
 class WgtRtnMatrix():
-    def __init__(self, signal_df, test_type='in_sam', test_roll_freq=0):
+    def __init__(self, signal_df, test_type='whole_sample', test_roll_freq=1):
         self.test_type = test_type
         self.test_roll_freq = test_roll_freq
         self.mktcap_cls = cfg.param_cls_dict.get('mkt_cap')
@@ -36,10 +36,13 @@ class WgtRtnMatrix():
         self.final_matrix = self.getFinalMatrix()
 
     def chgTestPeriod(self):
-        if self.test_type == 'in_sam':
+        if self.test_type == 'in_sample':
             test_beg_year, test_end_year, _ = cfg.getTestBegEndYr(self.test_roll_freq)  #FIXME
-        elif self.test_type == 'out_sam':
+        elif self.test_type == 'out_sample':
             _ , test_beg_year, test_end_year = cfg.getTestBegEndYr(self.test_roll_freq)
+        elif self.test_type == 'whole_sample':
+            test_beg_year, _ , test_end_year = cfg.getTestBegEndYr(self.test_roll_freq)
+
         self.signal_df = self.signal_df.loc[self.signal_df.index >=
                                             pd.to_datetime(test_beg_year).to_period("Q") - cfg.qtr_to_semi_ratio]
         self.signal_df = self.signal_df.loc[self.signal_df.index <= pd.to_datetime(test_end_year).to_period("Q")]
@@ -144,13 +147,14 @@ class Stats():
         ax = fig.add_subplot()
         qly_rtn_df['Return'].plot(ax=ax, color=(qly_rtn_df['Return']>0).map({True:'mediumblue', False:'red'}),
                                   kind='bar', title=grph_name, ylabel='Return', legend=False)
-        ax.xaxis.set_major_locator(plt.MaxNLocator(8))
+        if len(qly_rtn_df) >= 8:
+            ax.xaxis.set_major_locator(plt.MaxNLocator(8))
         ax.yaxis.set_major_locator(plt.MaxNLocator(8))
         ax.yaxis.set_major_formatter(mlib.ticker.PercentFormatter(xmax=1, symbol='%'))
         fig.set_facecolor('lightgrey')
         ax.set_facecolor('black')
         fig.autofmt_xdate()
-        fig.savefig(cfg.directory['ssr']+cfg.mkt_idx_name+" "+grph_name+".png")
+        fig.savefig(cfg.directory['ssr'] + cfg.market+ ", " +grph_name + ".png")
         plt.show()
 
     def drawLineGraphs(self, grph_name):
@@ -169,7 +173,7 @@ class Stats():
         fig.set_facecolor('lightgrey')
         ax.set_facecolor('black')
         fig.autofmt_xdate()
-        fig.savefig(cfg.directory['ssr'] + cfg.mkt_idx_name + " " + grph_name + ".png")
+        fig.savefig(cfg.directory['ssr'] + cfg.market + ", " + grph_name + ".png")
         plt.show()
 
     def printStats(self, strategy):
@@ -234,65 +238,7 @@ class Stats():
         return mdd
 
 
-def oneTimeTest():
-    matrix_cls = WgtRtnMatrix(cfg.updated_csv_data.get('signal'))
-    matrix_cls.writeCSV()
-
-    mktidx_cls = cfg.mktidx_cls_dict.get(cfg.mkt_idx_name)
-    bm_idx_df, bm_kpi_df = mktidx_cls.calKPI()
-
-    # match testing period time
-    bm_idx_df = bm_idx_df.loc[bm_idx_df.index <= matrix_cls.kpi_df.index.max()]
-    bm_kpi_df = bm_kpi_df.loc[bm_kpi_df.index <= matrix_cls.kpi_df.index.max()]
-
-    bt_stats_cls = Stats(matrix_cls.kpi_df, bm_idx_df)
-    bt_stats_cls.drawLineGraphs(cfg.line_grph_title)
-    bt_stats_cls.drawBarGraphs(cfg.bar_grph_title)
-    bt_stats_cls.printStats(cfg.strategy_name)
-
-    bm_stats_cls = Stats(bm_kpi_df, bm_idx_df)
-    bm_stats_cls.printStats(cfg.mkt_idx_name)
-
-
-def optimSecCnt():
-    sharpe_list = []
-    mdd_list = []
-    ann_rtn_list = []
-    ann_vol_list = []
-    sec_cnt_list = []
-    mktidx_cls = cfg.mktidx_cls_dict.get(cfg.mkt_idx_name)
-    bm_idx_df, bm_kpi_df = mktidx_cls.calKPI()
-
-    for mark in range(cfg.sim_sec_cnt_min, cfg.sim_sec_cnt_max + 1):
-        cfg.sec_eval_cls_dict['signal'+str(mark)] = sec_select.SignalDF(cfg.updated_csv_data.get('earn_g'),
-                                                                        cfg.updated_csv_data.get('mkt_cap'),
-                                                                        mark)
-        matrix_cls = WgtRtnMatrix(cfg.sec_eval_cls_dict['signal'+str(mark)].final_df)
-
-        bm_idx_df = bm_idx_df.loc[bm_idx_df.index <= matrix_cls.kpi_df.index.max()]
-        bt_stats_cls = Stats(matrix_cls.kpi_df, bm_idx_df)
-        bt_stats_cls.drawLineGraphs(cfg.line_grph_title + ", " + str(mark) + " Sector(s) Chosen")
-        bt_stats_cls.drawBarGraphs(cfg.bar_grph_title + ", " + str(mark) + " Sector(s) Chosen")
-        bt_stats_cls.printStats(cfg.strategy_name)
-        
-        sec_cnt_list.append(mark)
-        sharpe_list.append(bt_stats_cls.sharpe)
-        ann_rtn_list.append(bt_stats_cls.annual_rtn)
-        mdd_list.append(bt_stats_cls.strategy_mdd)
-        ann_vol_list.append(bt_stats_cls.annual_vol)
-    drawScatGraphs(sec_cnt_list, sharpe_list)
-    drawQuadScatGraphs(sec_cnt_list, sharpe_list, ann_rtn_list, mdd_list,ann_vol_list)
-
-def drawScatGraphs(sec_cnt_list, sharpe_list):
-    fig = plt.figure()
-    fig.suptitle('test', fontsize=18)
-    ax1 = fig.add_subplot(1,1,1)
-    ax1.axes.scatter(sec_cnt_list, sharpe_list, c='darkblue')
-    ax1.set_xlabel('Sector Count')
-    ax1.set_ylabel('Annual Sharpe')
-    plt.show()
-
-def drawQuadScatGraphs(sec_cnt_list, sharpe_list, ann_rtn_list, mdd_list, ann_vol_list):
+def drawQuadScatGraphs(sec_cnt_list, sharpe_list, ann_rtn_list, mdd_list, ann_vol_list, freq):
     fig = plt.figure(figsize=(8,7), constrained_layout=True)
     fig.suptitle(cfg.scat_grph_title, fontsize=18)
     ax1 = fig.add_subplot(2,2,1)
@@ -339,11 +285,11 @@ def drawQuadScatGraphs(sec_cnt_list, sharpe_list, ann_rtn_list, mdd_list, ann_vo
         ax3.annotate(txt, (ann_rtn_list[i], ann_vol_list[i]))
         ax4.annotate(txt, (mdd_list[i], ann_vol_list[i]))
     
-    fig.savefig(cfg.directory['ssr'] + cfg.scat_grph_title + ".png")
+    fig.savefig(cfg.directory['ssr'] + cfg.scat_grph_title + ", window " + str(freq+1) + ".png")
     plt.show()
 
 
-def fullSimulate():
+def rollWindowTest():
     #optim_param = cfg.optim_max_param if cfg.optim_min_param == None else cfg.optim_min_param
     mktidx_cls = cfg.mktidx_cls_dict.get(cfg.mkt_idx_name)
 
@@ -356,13 +302,13 @@ def fullSimulate():
         best_mark = None
         test_mark = []
         
-        bm_idx_df, bm_kpi_df = mktidx_cls.calKPI('in_sam', freq)
+        bm_idx_df, bm_kpi_df = mktidx_cls.calKPI('in_sample', freq)
         for mark in range(cfg.sim_sec_cnt_min, cfg.sim_sec_cnt_max + 1):
             test_mark.append(mark)
             cfg.sec_eval_cls_dict['signal'+str(mark)] = sec_select.SignalDF(cfg.updated_csv_data.get('earn_g'),
                                                                             cfg.updated_csv_data.get('mkt_cap'),
                                                                             mark)
-            matrix_cls = WgtRtnMatrix(cfg.sec_eval_cls_dict['signal'+str(mark)].final_df, 'in_sam', freq)
+            matrix_cls = WgtRtnMatrix(cfg.sec_eval_cls_dict['signal'+str(mark)].final_df, 'in_sample', freq)
 
             bm_idx_df = bm_idx_df.loc[bm_idx_df.index <= matrix_cls.kpi_df.index.max()]
             bt_stats_cls = Stats(matrix_cls.kpi_df, bm_idx_df)
@@ -374,31 +320,56 @@ def fullSimulate():
             ann_vol_list.append(bt_stats_cls.annual_vol)
 
             best_mark = test_mark[sharpe_list.index(max(sharpe_list))]
-        bt_stats_cls.drawLineGraphs('In Sample: ' + cfg.line_grph_title + ", " + str(best_mark) + " Sector(s) Chosen")
+
         print('Picking ' + str(best_mark) + ' sectors is the best in terms of annualized sharpe, with ' + str(round(max(sharpe_list),4)))
 
-        drawQuadScatGraphs(sec_cnt_list, sharpe_list, ann_rtn_list, mdd_list,ann_vol_list)
+        drawQuadScatGraphs(sec_cnt_list, sharpe_list, ann_rtn_list, mdd_list, ann_vol_list, freq)
         if cfg.optim_param == 'sharpe':
     
                 mktidx_cls = cfg.mktidx_cls_dict.get(cfg.mkt_idx_name)
-                bm_idx_df, bm_kpi_df = mktidx_cls.calKPI('out_sam', freq)
+                bm_idx_df, bm_kpi_df = mktidx_cls.calKPI('out_sample', freq)
 
                 print('Out of sample test, rolling window: ' +
                       str(freq+1) + ', ' + str(best_mark) + ' of sectors picked')
                 
-                matrix_cls = WgtRtnMatrix(cfg.sec_eval_cls_dict['signal' + str(best_mark)].final_df, 'out_sam', freq)
+                matrix_cls = WgtRtnMatrix(cfg.sec_eval_cls_dict['signal' + str(best_mark)].final_df, 'out_sample', freq)
                 bm_idx_df = bm_idx_df.loc[bm_idx_df.index <= matrix_cls.kpi_df.index.max()]
             
                 bt_stats_cls = Stats(matrix_cls.kpi_df, bm_idx_df)
-                bt_stats_cls.drawLineGraphs('Out of Sample: ' + cfg.line_grph_title + ", " + str(best_mark) + " Sector(s) Chosen")
+                bt_stats_cls.drawLineGraphs(cfg.line_grph_title + ", " + str(best_mark) + " Sector(s) Chosen, " + "window " + str(freq+1))
                 bt_stats_cls.printStats(cfg.strategy_name)
                 
                 bm_stats_cls = Stats(bm_kpi_df, bm_idx_df)
                 bm_stats_cls.printStats(cfg.mkt_idx_name)
+    if cfg.roll_freq == 1:
+        bt_stats_cls.drawBarGraphs(cfg.bar_grph_title)
+    matrix_cls.writeCSV()
+
+def oneTimeTest():
+    sec_select.routing('signal',
+                       cfg.updated_csv_data.get('earn_g'),
+                       cfg.updated_csv_data.get('mkt_cap'))
+
+    matrix_cls = WgtRtnMatrix(cfg.updated_csv_data.get('signal'))
+    matrix_cls.writeCSV()
+
+    mktidx_cls = cfg.mktidx_cls_dict.get(cfg.mkt_idx_name)
+    bm_idx_df, bm_kpi_df = mktidx_cls.calKPI()
+
+    # match testing period time
+    bm_idx_df = bm_idx_df.loc[bm_idx_df.index <= matrix_cls.kpi_df.index.max()]
+    bm_kpi_df = bm_kpi_df.loc[bm_kpi_df.index <= matrix_cls.kpi_df.index.max()]
+
+    bt_stats_cls = Stats(matrix_cls.kpi_df, bm_idx_df)
+    bt_stats_cls.drawLineGraphs(cfg.line_grph_title)
+    bt_stats_cls.drawBarGraphs(cfg.bar_grph_title)
+    bt_stats_cls.printStats(cfg.strategy_name)
+
+    bm_stats_cls = Stats(bm_kpi_df, bm_idx_df)
+    bm_stats_cls.printStats(cfg.mkt_idx_name)
 
 
-
-'''----------------------------------------------------------------------------------'''
+'''--------------------------------------------------------------------------'''
 
 if __name__ == '__main__':
     start_time = time.time()
@@ -410,13 +381,10 @@ if __name__ == '__main__':
     for csv_key in cfg.pre_csv.keys():
         up.routing(csv_key)
 
-    sec_select.routing('signal',
-                       cfg.updated_csv_data.get('earn_g'),
-                       cfg.updated_csv_data.get('mkt_cap'))
-
-    #oneTimeTest()
-    #optimSecCnt()
-    fullSimulate()
+    if cfg.test_method == 'rolling':
+        rollWindowTest()
+    elif cfg.test_method == 'single period':
+        oneTimeTest()
 
     print("Backtesting Completed...")
     print("\n")
