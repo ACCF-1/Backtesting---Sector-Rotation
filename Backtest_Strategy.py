@@ -10,15 +10,6 @@ import itertools as it  # to learn
 import matplotlib.pyplot as plt
 import matplotlib as mlib
 
-'''
-developer notes
-3, qly_rtn_df Q2 Q4 NAV the same, possible problem
-8, 2018 Q4 rows gone
-9, day need to minus 1?
-10, add signal evaluation: buy but negative return; not buy but positive return
-11, optim_max_param
-'''
-
 
 class WgtRtnMatrix():
     def __init__(self, signal_df, test_type='whole_sample', test_roll_freq=1):
@@ -37,7 +28,7 @@ class WgtRtnMatrix():
 
     def chgTestPeriod(self):
         if self.test_type == 'in_sample':
-            test_beg_year, test_end_year, _ = cfg.getTestBegEndYr(self.test_roll_freq)  #FIXME
+            test_beg_year, test_end_year, _ = cfg.getTestBegEndYr(self.test_roll_freq)
         elif self.test_type == 'out_sample':
             _ , test_beg_year, test_end_year = cfg.getTestBegEndYr(self.test_roll_freq)
         elif self.test_type == 'whole_sample':
@@ -290,7 +281,6 @@ def drawQuadScatGraphs(sec_cnt_list, sharpe_list, ann_rtn_list, mdd_list, ann_vo
 
 
 def rollWindowTest():
-    #optim_param = cfg.optim_max_param if cfg.optim_min_param == None else cfg.optim_min_param
     mktidx_cls = cfg.mktidx_cls_dict.get(cfg.mkt_idx_name)
 
     for freq in range(cfg.roll_freq):
@@ -320,7 +310,10 @@ def rollWindowTest():
             ann_vol_list.append(bt_stats_cls.annual_vol)
 
             best_mark = test_mark[sharpe_list.index(max(sharpe_list))]
-
+            
+        if cfg.roll_freq == 1:
+            bt_stats_cls.drawLineGraphs(cfg.line_grph_title + ", " + str(best_mark) + " Sector(s) Chosen, " + "window " + str(freq+1))
+            
         print('Picking ' + str(best_mark) + ' sectors is the best in terms of annualized sharpe, with ' + str(round(max(sharpe_list),4)))
 
         drawQuadScatGraphs(sec_cnt_list, sharpe_list, ann_rtn_list, mdd_list, ann_vol_list, freq)

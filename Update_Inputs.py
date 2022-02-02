@@ -4,29 +4,23 @@ import numpy as np
 import pandas as pd
 import time
 
-'''
-developer notes
-4, calWgtEarnG -> 就咁two df divide
-7, post_df = pd.... can use index_col =['0']
-'''
-
 
 def routing(csv_key):
     with open(cfg.directory['pre'] + cfg.pre_csv[csv_key])as file:
         reader = csv.reader(file)
         raw_pre_rows = [rows for rows in reader]
-    post_df = pd.read_csv((cfg.directory['post'] + cfg.post_csv[csv_key]), header=None)  # index_col = ['0']
+    post_df = pd.read_csv((cfg.directory['post'] + cfg.post_csv[csv_key]), header=None)
 
     if csv_key == 'mkt_cap':
-        cfg.param_cls_dict[csv_key] = MktCap(csv_key, raw_pre_rows, post_df) # FIXME
+        cfg.param_cls_dict[csv_key] = MktCap(csv_key, raw_pre_rows, post_df)
         cfg.updated_csv_data[csv_key] = cfg.param_cls_dict[csv_key].final_df
         cfg.param_cls_dict[csv_key].updateCSV()
     elif csv_key == 'earn_g':
-        cfg.param_cls_dict[csv_key] = EarnG(csv_key, raw_pre_rows, post_df) # FIXME
+        cfg.param_cls_dict[csv_key] = EarnG(csv_key, raw_pre_rows, post_df)
         cfg.updated_csv_data[csv_key] = cfg.param_cls_dict[csv_key].final_df
         cfg.param_cls_dict[csv_key].updateCSV()
     elif csv_key == 'px':
-        cfg.param_cls_dict[csv_key] = StkPx(csv_key, raw_pre_rows, post_df) # FIXME
+        cfg.param_cls_dict[csv_key] = StkPx(csv_key, raw_pre_rows, post_df)
         cfg.updated_csv_data[csv_key] = cfg.param_cls_dict[csv_key].final_df
         cfg.param_cls_dict[csv_key].updateCSV()
     elif csv_key == cfg.mkt_idx_name:
@@ -47,7 +41,7 @@ class MktIdx(object):
         self.csv_name = csv_key
         self.final_df = self.getFinalDF()
 
-    def getPostLastDate(self):  # FIXME to adjustDfPeriod
+    def getPostLastDate(self):
         post_last_date = self.post_df[self.date_col_idx][len(self.post_df[self.date_col_idx]) - 1]
         post_last_date = pd.to_datetime(post_last_date, format='%d/%m/%Y')
         return post_last_date
@@ -66,13 +60,13 @@ class MktIdx(object):
     def calKPI(self, test_type='whole_sample', freq=1):
         test_roll_freq = freq
         if test_type == 'in_sample':
-            test_beg_year, test_end_year, _ = cfg.getTestBegEndYr(test_roll_freq)  #FIXME
+            test_beg_year, test_end_year, _ = cfg.getTestBegEndYr(test_roll_freq)
         elif test_type == 'out_sample':
-            _ , test_beg_year, test_end_year = cfg.getTestBegEndYr(test_roll_freq)  #FIXME
+            _ , test_beg_year, test_end_year = cfg.getTestBegEndYr(test_roll_freq)
         elif test_type == 'whole_sample':
             test_beg_year, _ , test_end_year = cfg.getTestBegEndYr(test_roll_freq)
         bm_idx_df = self.final_df.loc[self.final_df.index >= test_beg_year]
-        bm_idx_df = bm_idx_df.loc[bm_idx_df.index < test_end_year]  # FIXME, may del
+        bm_idx_df = bm_idx_df.loc[bm_idx_df.index < test_end_year]
         bm_kpi_df = bm_idx_df.pct_change().mul(100).copy()
         bm_kpi_df.columns = ['Daily Return']
         bm_kpi_df['Cumulative Return'] = bm_kpi_df['Daily Return'].div(100).add(1).cumprod()
@@ -81,10 +75,10 @@ class MktIdx(object):
     def updateCSV(self):
         to_print_df = self.final_df.copy()
         to_print_df.index = to_print_df.index.strftime("%d/%m/%Y")
-        to_print_df.to_csv(cfg.directory['post'] + cfg.post_csv[self.csv_name], header=False) # index=False
+        to_print_df.to_csv(cfg.directory['post'] + cfg.post_csv[self.csv_name], header=False)
 
 
-class StkParamBase(object):  # FIXME
+class StkParamBase(object):
     pre_data_beg_idx = 6
     post_data_beg_idx = 2
     data_col_per_stk = 2
@@ -93,7 +87,6 @@ class StkParamBase(object):  # FIXME
     def __init__(self, csv_key, raw_pre_rows, post_df):
         self.csv_name = csv_key
         self.raw_post_df = post_df
-        #self.raw_pre_rows  = raw_pre_rows
         self.pre_list = raw_pre_rows[self.pre_data_beg_idx:]
         self.post_df, self.stkcode_list, self.sec_list = self.getPostDFComp()
         if not self.pre_list:
@@ -135,8 +128,8 @@ class StkParamBase(object):  # FIXME
         param_list = []
         for i in range(len(self.decom_pre_list)):
             param_list.append([""]*len(self.date_list))
-            for j in range(len(self.decom_pre_list[i][1])):  # FIXME
-                param_list[i][len(self.decom_pre_list[i][1])*i + j] = self.decom_pre_list[i][1][j]  # FIXME
+            for j in range(len(self.decom_pre_list[i][1])):
+                param_list[i][len(self.decom_pre_list[i][1])*i + j] = self.decom_pre_list[i][1][j]
         return param_list
 
     def calRowsToAdd(self):
@@ -184,7 +177,7 @@ class StkPx(StkParamBase):
         StkParamBase.__init__(self, csv_key, raw_pre_rows, post_df)
 
     def getDateList(self):
-        date_list = self.decom_pre_list[0][0]  #all HK stk, trading date the same; assume the same
+        date_list = self.decom_pre_list[0][0]
         date_list = cfg.refmtDateList(date_list)
         return date_list
 
@@ -204,8 +197,8 @@ class StkPx(StkParamBase):
 
     def getFinalDF(self):
         final_df = pd.concat([self.post_df, self.rows_to_add])
-        final_df = final_df.replace(to_replace='', value=None).fillna(method='ffill') #FIXME move to naToZero
-        final_df = final_df.replace(to_replace='#N/A N/A', value=None).fillna(0) #FIXME move to naToZero
+        final_df = final_df.replace(to_replace='', value=None).fillna(method='ffill')
+        final_df = final_df.replace(to_replace='#N/A N/A', value=None).fillna(0)
         final_df = final_df.astype(np.float64)
         return final_df
 
@@ -221,7 +214,7 @@ class EarnG(StkParamBase):
         if not self.pre_list:
             self.final_df.index = self.final_df.index.to_period("Q")
         else:
-            self.sec_list_dict = self.getSectorDictList()  # chg to class var?
+            self.sec_list_dict = self.getSectorDictList()
             self.rows_to_add = self.naToZero(self.rows_to_add)
             self.wgt_df = self.getWgtGrowth(self.sec_list_dict)
             self.rows_to_add = self.calWgtEarnG()
@@ -249,7 +242,7 @@ class EarnG(StkParamBase):
         return wgt_df
 
     def calWgtEarnG(self):
-        self.rows_to_add.columns = self.sec_list # del?
+        self.rows_to_add.columns = self.sec_list
         for wgt_sec_key in self.wgt_df.columns:
             wgt_key = wgt_sec_key
             self.rows_to_add[cfg.sec_league_tbl[wgt_sec_key]] = self.rows_to_add[cfg.sec_league_tbl[wgt_sec_key]].apply \

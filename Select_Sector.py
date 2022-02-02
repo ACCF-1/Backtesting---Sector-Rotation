@@ -5,13 +5,6 @@ import os
 import scipy.stats as stat
 import time
 
-'''
-developer notes
-2, Ranking [1 and 0] file sec name short form
-3, check if update is needed, rather than always update
-4, Q2 Q4: semiannual, but use Q2 Q4 quarter only earn growth
-
-'''
 
 def routing(csv_name, earn_g_df, mktcap_df):
     if csv_name == 'ranking':
@@ -27,7 +20,7 @@ class MarksDF(object):
     def __init__(self, earn_g_df, mktcap_df):
         self.mktcap_df = mktcap_df.copy()
         self.earn_g_df = earn_g_df.copy()
-        self.earn_g_df.columns = self.mktcap_df.columns  # FIXME for US only. US earn_g column idx no sector
+        self.earn_g_df.columns = self.mktcap_df.columns
         self.sec_dict_list = {}
         self.rank_date_list = self.getRankDateList()
         self.sum_list = self.getSumList()
