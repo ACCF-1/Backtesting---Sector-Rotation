@@ -227,7 +227,7 @@ class EarnG(StkParamBase):
 
     def getWgtGrowth(self, sec_list_dict):
         weight = []
-        for i in range(len(self.rows_to_add)): # why enumerate not work
+        for i in range(len(self.rows_to_add)):
             for key in sec_list_dict.keys():
                 sec_list_dict[key] = []
             weight.append([])
