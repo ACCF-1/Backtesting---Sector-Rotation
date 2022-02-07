@@ -1,4 +1,6 @@
 # Backtesting---Sector-Rotation
 
 
-created for for job interview purpose only
+Created for for job interview purpose only, not for commercial use
+
+Created by Andy Chan
