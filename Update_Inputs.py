@@ -145,8 +145,6 @@ class StkParamBase(object):
 
     def getFinalDF(self):
         final_df = pd.concat([self.post_df, self.rows_to_add])
-        final_df.columns = pd.MultiIndex.from_arrays((self.stkcode_list,
-                                                      self.sec_list))
         final_df = self.naToZero(final_df)
         return final_df
 
@@ -168,6 +166,9 @@ class MktCap(StkParamBase):
         StkParamBase.__init__(self, csv_key, raw_pre_rows, post_df)
         if not self.pre_list:
             self.final_df.index = self.final_df.index.to_period("Q")
+        else:
+            self.final_df.columns = pd.MultiIndex.from_arrays((self.stkcode_list,
+                                                               self.sec_list))
 
 class StkPx(StkParamBase):
     post_data_beg_idx = 1
@@ -218,6 +219,8 @@ class EarnG(StkParamBase):
             self.rows_to_add = self.naToZero(self.rows_to_add)
             self.wgt_df = self.getWgtGrowth(self.sec_list_dict)
             self.rows_to_add = self.calWgtEarnG()
+            self.final_df.columns = pd.MultiIndex.from_arrays((self.stkcode_list,
+                                                          self.sec_list))
 
     def getSectorDictList(self):
         sec_list_dict = {}
@@ -227,7 +230,7 @@ class EarnG(StkParamBase):
 
     def getWgtGrowth(self, sec_list_dict):
         weight = []
-        for i in range(len(self.rows_to_add)):
+        for i in range(len(self.rows_to_add)): # why enumerate not work
             for key in sec_list_dict.keys():
                 sec_list_dict[key] = []
             weight.append([])
@@ -244,13 +247,12 @@ class EarnG(StkParamBase):
     def calWgtEarnG(self):
         self.rows_to_add.columns = self.sec_list
         for wgt_sec_key in self.wgt_df.columns:
-            wgt_key = wgt_sec_key
+            #wgt_key = wgt_sec_key
             self.rows_to_add[cfg.sec_league_tbl[wgt_sec_key]] = self.rows_to_add[cfg.sec_league_tbl[wgt_sec_key]].apply \
                                                             (lambda cell_value: cell_value / list(self.wgt_df[wgt_sec_key]),
                                                              axis = 0)
         self.rows_to_add.columns = self.stkcode_list
         return self.rows_to_add
-
 
 if __name__ == '__main__':
     print("\n")
