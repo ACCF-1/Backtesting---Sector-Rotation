@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 import os
 
@@ -8,15 +7,15 @@ market = 'HK'
 mkt_idx_name = 'HSCI'
 strategy_name = 'Sector Rotate'
 
-test_method = 'rolling'  # "rolling" or "single period"
-test_beg_yr = 2009
-train_set_period = 2
-test_set_period = 1
+test_method = 'single period'  # "rolling" or "single period"
+test_beg_yr = 2008
+train_set_period = 0
+test_set_period = 11
 optim_param = 'sharpe'
 sim_sec_cnt_min = 3
 sim_sec_cnt_max = 8
-roll_increm_yr = 1
-roll_freq = 5
+roll_increm_yr = 0
+roll_freq = 1
 
 num_of_sec_chosen = 4  # for single period or signal update only
 
@@ -61,6 +60,8 @@ param_cls_dict = {}
 mktidx_cls_dict = {}
 updated_csv_data = {}
 sec_eval_cls_dict = {}
+stats_summary = []
+fig_dict = {}
 
 '''------------------------global-method----------------------------'''
 

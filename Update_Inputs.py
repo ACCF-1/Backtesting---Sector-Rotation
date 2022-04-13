@@ -254,6 +254,7 @@ class EarnG(StkParamBase):
         self.rows_to_add.columns = self.stkcode_list
         return self.rows_to_add
 
+
 if __name__ == '__main__':
     print("\n")
     print("Start Update...")

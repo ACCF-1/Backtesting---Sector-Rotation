@@ -145,7 +145,8 @@ class Stats():
         ax.set_facecolor('black')
         fig.autofmt_xdate()
         fig.savefig(cfg.directory['ssr'] + cfg.market+ ", " +grph_name + ".png")
-        plt.show()
+        cfg.fig_dict[grph_name] = fig
+        #plt.show()
 
     def drawLineGraphs(self, grph_name):
         beg_mktidx_val = self.bm_idx_val_df.iat[0, 0]
@@ -164,26 +165,43 @@ class Stats():
         ax.set_facecolor('black')
         fig.autofmt_xdate()
         fig.savefig(cfg.directory['ssr'] + cfg.market + ", " + grph_name + ".png")
-        plt.show()
+        cfg.fig_dict[grph_name] = fig
+        #plt.show()
 
     def printStats(self, strategy):
         mdd_subj = None
+        days = None
         if strategy == 'Sector Rotate':
-            print(len(self.perf_df), "days")
+            days = str(len(self.perf_df)) + " trade days"
+            subject = "Strategy:"
             mdd_subj = self.perf_df['Portfolio NAV']
         elif strategy == cfg.mkt_idx_name:
-            print(cfg.mkt_idx_name, "Index: ")
+            subject = str(cfg.mkt_idx_name) + " Index: "
             mdd_subj = self.bm_idx_val_df['Index Value']
 
-        print("Annual Sharpe Ratio: ", round(self.sharpe, 4))
-        print("Cumulative =", round(self.cum_rtn, 4), "%")
-        print("Max Consecutive Loss =", self.consec_loss, "days")
-        print("Max Drawdown:", round(self.calMdd(mdd_subj.to_numpy(copy=True)), 4), "%")
-        print("Win Rate:", round(self.win_rate, 4), "%")
-        print("Average Daily Return =", round(self.avg_rtn, 4), "%")
-        print("SD of Daily Return =", round(self.std_rtn, 4), "%")
-        print("Annualized Return =", round(self.annual_rtn, 4), "%")
-        print("Annualized Volatility =", round(self.annual_vol, 4), "%")
+        shpe = "Annual Sharpe Ratio: " + str(round(self.sharpe, 4))
+        cum = "Cumulative: " + str(round(self.cum_rtn, 4)) + " %"
+        mcl = "Max Consecutive Loss: " + str(self.consec_loss) + " days"
+        md = "Max Drawdown:" + str(round(self.calMdd(mdd_subj.to_numpy(copy=True)), 4)) + " %"
+        wr = "Win Rate:" + str(round(self.win_rate, 4)) + " %"
+        adr = "Average Daily Return: " + str(round(self.avg_rtn, 4)) + " %"
+        sd = "SD of Daily Return: " + str(round(self.std_rtn, 4)) + " %"
+        ar = "Annualized Return: " + str(round(self.annual_rtn, 4)) + " %"
+        vol = "Annualized Volatility: " + str(round(self.annual_vol, 4)) + " %"
+        cfg.stats_summary.append([days,subject,shpe,cum,mcl,md,wr,adr,sd,ar,vol])
+        
+        if days != None:
+            print(days)
+        print(subject)
+        print(shpe)
+        print(cum)
+        print(mcl)
+        print(md)
+        print(wr)
+        print(adr)
+        print(sd)
+        print(ar)
+        print(vol)
         print("\n")
 
     def calSharpe(self):
@@ -276,7 +294,8 @@ def drawQuadScatGraphs(sec_cnt_list, sharpe_list, ann_rtn_list, mdd_list, ann_vo
         ax4.annotate(txt, (mdd_list[i], ann_vol_list[i]))
     
     fig.savefig(cfg.directory['ssr'] + cfg.scat_grph_title + ", window " + str(freq+1) + ".png")
-    plt.show()
+    cfg.fig_dict[cfg.scat_grph_title + ", window " + str(freq+1)] = fig
+    #plt.show()
 
 
 def rollWindowTest():
@@ -313,7 +332,9 @@ def rollWindowTest():
         if cfg.roll_freq == 1:
             bt_stats_cls.drawLineGraphs(cfg.line_grph_title + ", " + str(best_mark) + " Sector(s) Chosen, " + "window " + str(freq+1))
             
-        print('Picking ' + str(best_mark) + ' sectors is the best in terms of annualized sharpe, with ' + str(round(max(sharpe_list),4)))
+        optim_sec_notice = 'Picking ' + str(best_mark) + ' sectors is the best in terms of annualized sharpe, with ' + str(round(max(sharpe_list),4))
+        cfg.stats_summary.append(optim_sec_notice)
+        print(optim_sec_notice)
 
         drawQuadScatGraphs(sec_cnt_list, sharpe_list, ann_rtn_list, mdd_list, ann_vol_list, freq)
         if cfg.optim_param == 'sharpe':
@@ -321,8 +342,9 @@ def rollWindowTest():
                 mktidx_cls = cfg.mktidx_cls_dict.get(cfg.mkt_idx_name)
                 bm_idx_df, bm_kpi_df = mktidx_cls.calKPI('out_sample', freq)
 
-                print('Out of sample test, rolling window: ' +
-                      str(freq+1) + ', ' + str(best_mark) + ' of sectors picked')
+                oos_notice = 'Out of sample test, rolling window: ' + str(freq+1) + ', ' + str(best_mark) + ' of sectors picked'
+                cfg.stats_summary.append(oos_notice)
+                print(oos_notice)
                 
                 matrix_cls = WgtRtnMatrix(cfg.sec_eval_cls_dict['signal' + str(best_mark)].final_df, 'out_sample', freq)
                 bm_idx_df = bm_idx_df.loc[bm_idx_df.index <= matrix_cls.kpi_df.index.max()]
