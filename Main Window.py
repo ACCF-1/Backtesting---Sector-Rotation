@@ -10,7 +10,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 class Ui_stats_window(object):
     def setupUi(self, stats_window):
         stats_window.setObjectName("stats_window")
-        stats_window.setFixedSize(985, 789)
+        stats_window.setFixedSize(1100, 789)
         stats_window.setStyleSheet("background-color: rgb(246, 255, 225);")
         self.label_1 = QtWidgets.QLabel(stats_window)
         self.label_1.setGeometry(QtCore.QRect(30, 20, 321, 21))
@@ -22,12 +22,12 @@ class Ui_stats_window(object):
         self.label_1.setFont(font)
         self.label_1.setObjectName("label_1")
         self.buttonBox = QtWidgets.QDialogButtonBox(stats_window)
-        self.buttonBox.setGeometry(QtCore.QRect(874, 20, 81, 241))
+        self.buttonBox.setGeometry(QtCore.QRect(989, 20, 81, 241))
         self.buttonBox.setOrientation(QtCore.Qt.Vertical)
         self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel|QtWidgets.QDialogButtonBox.Ok)
         self.buttonBox.setObjectName("buttonBox")
         self.info_panel = QtWidgets.QListWidget(stats_window)
-        self.info_panel.setGeometry(QtCore.QRect(650, 90, 305, 661))
+        self.info_panel.setGeometry(QtCore.QRect(650, 90, 420, 661))
         self.info_panel.setStyleSheet("background-color: rgb(252, 252, 252);")
         self.info_panel.setObjectName("info_panel")
         self.grph_cb = QtWidgets.QComboBox(stats_window)
