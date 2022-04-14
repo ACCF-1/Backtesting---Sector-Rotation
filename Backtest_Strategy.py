@@ -350,7 +350,7 @@ def rollWindowTest():
                 bm_idx_df = bm_idx_df.loc[bm_idx_df.index <= matrix_cls.kpi_df.index.max()]
             
                 bt_stats_cls = Stats(matrix_cls.kpi_df, bm_idx_df)
-                bt_stats_cls.drawLineGraphs(cfg.line_grph_title + ", " + str(best_mark) + " Sector(s) Chosen, " + "window " + str(freq+1))
+                bt_stats_cls.drawLineGraphs("OOS: " + cfg.line_grph_title + ", " + str(best_mark) + " Sector(s) Chosen, " + "window " + str(freq+1))
                 bt_stats_cls.printStats(cfg.strategy_name)
                 
                 bm_stats_cls = Stats(bm_kpi_df, bm_idx_df)
